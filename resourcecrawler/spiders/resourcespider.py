@@ -283,13 +283,16 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
             resources = Selector()
         else:
             try:
+                # Consider including background-image found in [style], however
+                # only inline styles can be retrieved.  Don't forget to extract
+                # 'url(' prefix and ')' suffix when implemented!
                 resources = response.css('[href],[src]')
             except AttributeError as e:
                 resources = Selector()
         # We only want to crawl normal stuff.  hrefs will be used to filter 
         # returned Requests.
-        hrefs = resources.css('[href]').xpath('@href').extract()
-        resources = resources.css('[src]').xpath('@src').extract()
+        hrefs = resources.css('[href]::attr(href)').extract()
+        resources = resources.css('[src]::attr(src)').extract()
         resources.extend(hrefs)
 
         requests = set()
