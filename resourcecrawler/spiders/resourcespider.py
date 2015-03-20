@@ -287,37 +287,40 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
 
         requests = set()
         for link in resources:
-            if any(link.startswith(prefix) for prefix in ('mailto:', 'tel:', '#')):
+            link = link.strip()
+            linkp = urlparse(link)
+            if linkp.scheme in ('mailto', 'tel') or link.startswith(('#', 'mailto:', 'tel:')):
+                # URLs to ignore.
                 continue
-            if not urlparse(link).netloc:
+            elif not urlparse(link).netloc:
                 # Fix a relative URL.
                 link = base_url + os.path.join('/', base_path, link)
-            if link in self.seen:
-                continue
-            else:
-                self.seen.add(link)
+            elif not urlparse(link).scheme:
+                # Fix URL scheme.
+                link = 'http://%s' % link
 
+            # Determine if examined this URL before.
             mimetype = size = None
-            if self.optimize:
-                mimetype, encoding = mimetypes.guess_type(link)
-            if mimetype is None:
-                mimetype, size = self.get_header_info(link)
-            if not mimetype:
-                continue
+            if link not in self.seen:
+                self.seen.add(link)
+                # Get URL header information: mimetype, size
+                if self.optimize:
+                    mimetype, encoding = mimetypes.guess_type(link)
+                if mimetype is None:
+                    mimetype, size = self.get_header_info(link)
 
-            # Yield Items.
-            if any(mt in mimetype for mt in self.mimetypes):
-                if link not in self.found:
+            if mimetype:
+                # Yield Items.
+                if any(mt in mimetype for mt in self.mimetypes) and link not in self.found:
                     size = ResourceSpider.bytes2human(int(size) if size is not None else size)
                     log.msg('%4d: %-16s %-8s %-64s' % (len(self.found) + 1, mimetype, size, link), 
                             level=log.INFO)
                     # MIME type format example: 'text/html; charset=utf-8'
                     self.found.add(link)
                     yield ResourceItem(url=link, mimetype=mimetype, size=size, referrer=url)
-            
-            # Build Requests.
-            if self.follow and any(href.strip() in link for href in hrefs):
-                requests.add(link)
+                # Build Requests.
+                if self.follow and any(href.strip() in link for href in hrefs):
+                    requests.add(link)
 
         # Yield Requests after having yielded Items.
         for link in requests:
