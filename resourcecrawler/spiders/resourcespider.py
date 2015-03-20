@@ -8,10 +8,12 @@ import mimetypes
 import httplib2
 from copy import deepcopy
 from urlparse import urlparse
+from scrapy import log
 from scrapy.http import Request
 from scrapy.selector import Selector
 from scrapy.contrib.spiders import CrawlSpider, SitemapSpider, Rule
 from scrapy.contrib.linkextractors import LinkExtractor
+from twisted.internet.error import TimeoutError
 from resourcecrawler.items import ResourceItem
 
 
@@ -32,6 +34,10 @@ for mime in MIME_TYPES:
         current_types.add(subtyp)
 # Defaults.
 DEFAULT_CONTENTTYPES = ['application/pdf']
+#    Filepaths.
+DESKTOP_PATH = os.path.expandvars('$HOME/Desktop')
+DEFAULT_FILENAME = 'resources.csv'
+DEFAULT_FILEPATH = os.path.join(DESKTOP_PATH, DEFAULT_FILENAME) if os.path.exists(DESKTOP_PATH) else DEFAULT_FILENAME
 
 
 ###############################################################################
@@ -66,7 +72,20 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
         base = '%s://%s' % (urlp.scheme or 'http', urlp.netloc or urlp.hostname)
         return base, os.path.dirname(urlp.path)
 
-    def __init__(self, content_types=DEFAULT_CONTENTTYPES, dont_follow=False, 
+    @staticmethod
+    def bytes2human(num):
+        """Convert bytes to human readable format."""
+        if not isinstance(num, (int, float)):
+            return num
+        for unit in ('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB'):
+            hr = '%.2f%s' % (num, unit)
+            if abs(num) < 1024.0:
+                break
+            num /= 1024.0
+        return hr
+
+    def __init__(self, content_types=DEFAULT_CONTENTTYPES, 
+            output_file=DEFAULT_FILEPATH, dont_follow=False, 
             follow_external=False, ignore_sitemap=False, **kwargs):
         """Constructor.
 
@@ -85,6 +104,7 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
         # values into string representation.
         kwargs.update(
                 content_types=content_types,
+                output_file=output_file,
                 dont_follow=dont_follow, 
                 follow_external=follow_external, 
                 ignore_sitemap=ignore_sitemap)
@@ -174,9 +194,9 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
         if mimetype is not None:
             self.mimetypes.add(mimetype)
         else:
-            raise Exception('"%s" is not associated with a valid MIME/content type' % ext)
+            raise ValueError('"%s" is not associated with a valid MIME/content type' % ext)
 
-    def get_mimetype(self, url, base_url, base_path):
+    def get_header_info(self, url, base_url, base_path):
         """Determine the mimetype of a given URL by performing a HEAD request.
         A tuple of the MIME type and URL are returned because the URL may have 
         been changed if it was not an absolute path.
@@ -190,8 +210,9 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
             tuple -- string of MIME type, string of absolute URL
 
         """
-        mimetype = ''
         response = None
+        mimetype = ''
+        size = None
         # httplib2 has advantage over urllib2 in that a redirect maintains a 
         # HEAD request.
         interface = self.http_interface
@@ -214,8 +235,9 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
 
         if response is not None:
             mimetype = response.get('content-type', mimetype)
+            size = response.get('content-length', size)
 
-        return mimetype, url
+        return url, mimetype, size
 
     def parse(self, response):
         """Override CrawlSpider.parse() to specify if links found on start URLs 
@@ -257,26 +279,24 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
         base_url, base_path = ResourceSpider.get_baseurl(url)
 
         # Extract links.
-        try:
-            resources = response.css('[href],[src]')
-        except AttributeError as e:
-            resources = Selector()
-
         if 'text/javascript' in mimetype:
+            # Perhaps other cases as well, but I've seen JS text files be 
+            # parsed when it contained HTML.
             resources = Selector()
-        #hrefs = resources.css('[href]')
-        hrefs = resources.css('[href]').xpath('@href').extract()
-        resources = resources.css('[src]').xpath('@src').extract()
-        #resources.extend(hrefs.xpath('@href').extract())
-        resources.extend(hrefs)
+        else:
+            try:
+                resources = response.css('[href],[src]')
+            except AttributeError as e:
+                resources = Selector()
         # We only want to crawl normal stuff.  hrefs will be used to filter 
         # returned Requests.
-        #hrefs = hrefs.css('a,area').xpath('@href').extract()
-
+        hrefs = resources.css('[href]').xpath('@href').extract()
+        resources = resources.css('[src]').xpath('@src').extract()
+        resources.extend(hrefs)
 
         requests = set()
         for link in resources:
-            mimetype, link = self.get_mimetype(link, base_url, base_path)
+            link, mimetype, size = self.get_header_info(link, base_url, base_path)
             if not mimetype:
                 self.seen.add(link)
                 continue
@@ -287,15 +307,13 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
 
             # Yield Items.
             if any(mt in mimetype for mt in self.mimetypes):
-                combo = (link, mimetype)
-                if combo not in self.found:
-                    print '%4d: %-16s %-64s' % (len(self.found) + 1, mimetype, link)
+                if link not in self.found:
+                    size = ResourceSpider.bytes2human(int(size) if size is not None else size)
+                    log.msg('%4d: %-16s %-8s %-64s' % (len(self.found) + 1, mimetype, size, link), 
+                            level=log.INFO)
                     # MIME type format example: 'text/html; charset=utf-8'
-                    self.found.add(combo)
-                    item = ResourceItem()
-                    item['url'] = link
-                    item['mimetype'] = mimetype
-                    yield item
+                    self.found.add(link)
+                    yield ResourceItem(url=link, mimetype=mimetype, size=size, referrer=url)
             
             # Build Requests.
             if not self.dont_follow and any(href.strip() in link for href in hrefs):

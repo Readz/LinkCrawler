@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 NAME
-    app.py
+    find_resources
 
 DESCRIPTION
     Given a file type(s) and a URL, crawl the given website and count the 
@@ -9,10 +9,52 @@ DESCRIPTION
     provided.
 
 ARGUMENTS
+    Required
+
+        START_URL
+            One or more URL(s) from where the spider will start crawling.
+
+    Optional
+        
+        -h,--help 
+            Help.
+
+        -c CONTENT_TYPE, -m CONTENT_TYPE, -e CONTENT_TYPE, --content-type CONTENT_TYPE
+            MIME/content type(s) or file extensions to specify what resources 
+            are looked for when crawling.
+            Defaults to 'application/pdf'.
     
+        --ignore-sitemap
+            Do not attempt to use a website's sitemap to aid in crawling all 
+            links.
+
+        --folllow-external
+            Allow spider to crawl links external to the given start URL 
+            domain(s).  This recursive operation may go too far.
+
+        --dont-follow
+            Disallow spider to crawl/follow any links found.
+            Overrides --follow-external.
+            Implicitly sets --ignore-sitemap.
+
+        --list-content-types
+            List available valid content types that encompass a group of MIME 
+            types.
+
+        --list-mime-types
+            List available valid MIME types with associated file extensions.
+
+        --list-extensions
+            List avalailable valid extensions with associated MIME type(s).
+            
+        -d, --debug
+            Debug printing will include Scrapy log output.
 
 USAGE
-    
+    find_resources [-h] [-c CONTENT_TYPE] [--ignore_sitemap] 
+            [--follow-external] [--dont-follow] [--list-content-types]
+            [--list-mime-types] [--list-extensions] [-d] START_URL 
+            [START_URL ...]
 
 AUTHOR(S)
     Derek Frank <derek at readz dot com>
@@ -89,6 +131,12 @@ def get_opts(**defaults):
             help=('One or more content/MIME type(s) and/or file extension(s).'
                     '\n[Default: %(default)s]'
                     '\n[Example: "-c image -m application/pdf -e .xml"]'))
+    # Output.
+    parser.add_argument('-o', '--output-file', metavar='FILE_PATH',
+            type=str, default=defaults.get('output_file'),
+            help=('The filename optionally prefixed by the filepath of the CSV'
+                    ' output.'
+                    '\n[Default: "%(default)s"]'))
     # Crawling flags.
     parser.add_argument('--ignore-sitemap', 
             default=False, action='store_true',
@@ -112,11 +160,15 @@ def get_opts(**defaults):
             help=('List available valid MIME types with associated file extensions.'))
     parser.add_argument('--list-extensions',
             default=False, action='store_true',
-            help=('List available valid extensions with associated MIME type.'))
+            help=('List available valid extensions with associated MIME type(s).'))
     # Printing and debug output.
+    parser.add_argument('-s', '--suppress',
+            default=False, action='store_true',
+            help=('Debug printing will suppress Scrapy log output.'
+                    '\nOverrides --debug.'))
     parser.add_argument('-d', '--debug',
             default=False, action='store_true',
-            help=('Debug printing will include Scrapy log output.'))
+            help=('Debug printing will include DEBUG level Scrapy log output.'))
 
     # Parse and return the arguments.
     return parser.parse_args()
@@ -130,19 +182,22 @@ def main():
 
     # Project imports.
     sys.path.append(PROJ)
-    from resourcecrawler.spiders.resourcespider import ResourceSpider, CONTENT_TYPES, MIME_TYPES, MIME_EXTENSIONS, DEFAULT_CONTENTTYPES
+    from resourcecrawler.spiders.resourcespider import ResourceSpider, CONTENT_TYPES, MIME_TYPES, MIME_EXTENSIONS, DEFAULT_CONTENTTYPES, DEFAULT_FILEPATH
 
     # Environment.
     os.environ['SCRAPY_SETTINGS_MODULE'] = 'resourcecrawler.settings'
 
     # Options.
-    opts = get_opts(content_types=DEFAULT_CONTENTTYPES)
+    opts = get_opts(content_types=DEFAULT_CONTENTTYPES,
+            output_file=DEFAULT_FILEPATH)
 
     # Build Scrapy execute arguments from options.
     args = ['scrapy', 'crawl', 'resourcespider']
     for name, val in vars(opts).iteritems():
-        if name == 'debug':
-            args.extend(['-s', 'LOG_ENABLED=%d' % val])
+        if name == 'debug' and val:
+            args.extend(['-s', 'LOG_LEVEL=DEBUG'])
+        elif name == 'suppress':
+            args.extend(['-s', 'LOG_ENABLED=%d' % (not val)])
         elif val and name == 'list_extensions':
             k, v = 'EXTENSION', 'MIMETYPE'
             maxchars = len(max(max(MIME_EXTENSIONS.iterkeys(), key=lenCmp), k, key=lenCmp))

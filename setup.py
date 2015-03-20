@@ -31,7 +31,7 @@ config = {
     ],
     'packages': ['resourcecrawler', 'tests'],
     'long_description': read('README.md'),
-    'scripts': ['bin/app.py'],
+    'scripts': ['bin/find_resources'],
 }
 
 setup(**config)

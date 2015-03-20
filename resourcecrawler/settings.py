@@ -1,4 +1,5 @@
 BOT_NAME = 'resourcecrawler'
+LOG_LEVEL = 'INFO'
 
 SPIDER_MODULES = ['resourcecrawler.spiders']
 NEWSPIDER_MODULE = 'resourcecrawler.spiders'
@@ -7,8 +8,13 @@ NEWSPIDER_MODULE = 'resourcecrawler.spiders'
 CLOSESPIDER_PAGECOUNT = 1000
 CLOSESPIDER_TIMEOUT = 3600
 
-RETRY_ENABLED = False
+#RETRY_ENABLED = False
+RETRY_ENABLED = True
 COOKIES_ENABLED = False
+
+ITEM_PIPELINES = {
+    'resourcecrawler.pipelines.CsvExportPipeline': 100,
+}
 
 DOWNLOADER_MIDDLEWARES = {
     'resourcecrawler.middleware.RandomUserAgent': 1,
