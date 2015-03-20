@@ -55,8 +55,7 @@ Unless specified, the output CSV file will be located on the Desktop as "resourc
 
 
 ### Potential Platform Errors
-## OSX
-# Python Cryptography [source](http://chriskief.com/2014/03/25/installing-cryptography-via-pip-with-macports-or-homebrew/)
+##### OSX Python Cryptography [source](http://chriskief.com/2014/03/25/installing-cryptography-via-pip-with-macports-or-homebrew/)
 
 MacPorts
 
