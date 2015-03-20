@@ -197,7 +197,7 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
         else:
             raise ValueError('"%s" is not associated with a valid MIME/content type' % ext)
 
-    def get_header_info(self, url, base_url, base_path):
+    def get_header_info(self, url):
         """Determine the mimetype of a given URL by performing a HEAD request.
         A tuple of the MIME type and URL are returned because the URL may have 
         been changed if it was not an absolute path.
@@ -218,17 +218,7 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
         # HEAD request.
         interface = self.http_interface
         try:
-            try:
-                response, content = interface.request(url, method='HEAD')
-            except httplib2.RelativeURIError as e:
-                # url was a relative path.
-                url = url.strip()
-                if any(url.startswith(prefix) for prefix in ('mailto:', 'tel:', '#')):
-                    # url was invalid.
-                    mimetype = None
-                else:
-                    url = base_url + os.path.join('/', base_path, url)
-                    response, content = interface.request(url, method='HEAD')
+            response, content = interface.request(url, method='HEAD')
         except httplib2.ServerNotFoundError as e:
             mimetype = None
         except Exception as e:
@@ -238,7 +228,7 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
             mimetype = response.get('content-type', mimetype)
             size = response.get('content-length', size)
 
-        return url, mimetype, size
+        return mimetype, size
 
     def parse(self, response):
         """Override CrawlSpider.parse() to specify if links found on start URLs 
@@ -297,21 +287,23 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
 
         requests = set()
         for link in resources:
+            if any(link.startswith(prefix) for prefix in ('mailto:', 'tel:', '#')):
+                continue
+            if not urlparse(link).netloc:
+                # Fix a relative URL.
+                link = base_url + os.path.join('/', base_path, link)
+            if link in self.seen:
+                continue
+            else:
+                self.seen.add(link)
+
             mimetype = size = None
             if self.optimize:
                 mimetype, encoding = mimetypes.guess_type(link)
             if mimetype is None:
-                link, mimetype, size = self.get_header_info(link, base_url, base_path)
-            elif not urlparse(link).netloc:
-                # get_header_info() didn't get a chance to fix a relative URL.
-                link = base_url + os.path.join('/', base_path, link)
+                mimetype, size = self.get_header_info(link)
             if not mimetype:
-                self.seen.add(link)
                 continue
-            elif link in self.seen:
-                continue
-            else:
-                self.seen.add(link)
 
             # Yield Items.
             if any(mt in mimetype for mt in self.mimetypes):
