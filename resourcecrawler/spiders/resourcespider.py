@@ -175,6 +175,8 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
         self.cookies_seen = set()
         self.found = set()
         self.seen = set()
+        self.parsed = set()
+        self.requested = set()
         self.http_interface = httplib2.Http()
 
     def start_requests(self):
@@ -266,6 +268,11 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
 
         """
         url = response.url
+        if url in self.parsed:
+            return
+        else:
+            self.parsed.add(url)
+
         mimetype = response.headers['Content-Type']
         base_url, base_path = ResourceSpider.get_baseurl(url)
 
@@ -324,5 +331,6 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
 
         # Yield Requests after having yielded Items.
         for link in requests:
-            if self.isallowed(link):
+            if link not in self.requested and self.isallowed(link):
+                self.requested.add(link)
                 yield Request(link, callback=self.parse_link)
