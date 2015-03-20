@@ -320,7 +320,11 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
                 # Yield Items.
                 if any(mt in mimetype for mt in self.mimetypes) and link not in self.found:
                     size = ResourceSpider.bytes2human(int(size) if size is not None else size)
-                    log.msg('%4d: %-16s %-8s %-64s' % (len(self.found) + 1, mimetype, size, link), 
+                    count = len(self.found) + 1
+                    if count == 1:
+                        log.msg('%5s %-16s %-8s %-64s' % ('COUNT', 'MIMETYPE', 'SIZE', 'REFERRER'), 
+                                level=log.INFO)
+                    log.msg('%4d: %-16s %-8s %-64s' % (count, mimetype, size, link), 
                             level=log.INFO)
                     # MIME type format example: 'text/html; charset=utf-8'
                     self.found.add(link)

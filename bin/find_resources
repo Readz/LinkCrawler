@@ -31,12 +31,18 @@ from scrapy import log, signals
 from scrapy.utils.project import get_project_settings
 from scrapy.cmdline import execute
 
+# Project imports.
+# ResourceSpider, CONTENT_TYPES, MIME_TYPES, MIME_EXTENSIONS, DEFAULT_CONTENTTYPES, DEFAULT_FILEPATH
+try:
+    from resourcecrawler.spiders.resourcespider import *
+except ImportError:
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from resourcecrawler.spiders.resourcespider import *
+
 
 ###############################################################################
 # GLOBALS
 ###############################################################################
-
-PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 ###############################################################################
@@ -68,10 +74,9 @@ def get_opts(**defaults):
 
     # Build option parser.
     #usage = 'usage: python %prog [-h,--help] [options] URL ...'
-    program = 'python %s' % sys.argv[0]
     desc = ('Crawl the given website(s) and find all of the links of the given'
                 ' type(s).')
-    parser = ArgumentParser(prog=program, description=desc)
+    parser = ArgumentParser(description=desc)
     # Required arguments.
     parser.add_argument(dest='start_urls', metavar='START_URL',
             type=str, nargs='+',
@@ -136,10 +141,6 @@ def main():
         return len(s)
     def colPrint(left, right, maxchars=20):
         print ('%%%ds: %%s' % maxchars) % (left, right)
-
-    # Project imports.
-    sys.path.append(PROJ)
-    from resourcecrawler.spiders.resourcespider import ResourceSpider, CONTENT_TYPES, MIME_TYPES, MIME_EXTENSIONS, DEFAULT_CONTENTTYPES, DEFAULT_FILEPATH
 
     # Environment.
     os.environ['SCRAPY_SETTINGS_MODULE'] = 'resourcecrawler.settings'

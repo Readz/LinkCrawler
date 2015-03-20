@@ -1,3 +1,4 @@
+import os
 try:
     from setuptools import setup
 except ImportError:
@@ -11,12 +12,12 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 config = {
-    'name': 'ResourceCrawler'
+    'name': 'ResourceCrawler',
     'version': '0.1',
     'author': 'Derek Frank',
     'author_email': 'derek at readz dot com',
     'description': ('Crawl specified website(s) and gather resource information '
-                        'filtered by file extension.'),
+                        'filtered by content type.'),
     'license': 'MIT',
     'keywords': 'webcrawler spider crawl resources',
     'url': 'https://github.com/Readz/LinkCrawler',
@@ -29,7 +30,7 @@ config = {
         'twisted', 
         'Scrapy',
     ],
-    'packages': ['resourcecrawler', 'tests'],
+    'packages': ['resourcecrawler', 'resourcecrawler.spiders', 'tests'],
     'long_description': read('README.md'),
     'scripts': ['bin/find_resources'],
 }
