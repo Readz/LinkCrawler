@@ -84,19 +84,19 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
             num /= 1024.0
         return hr
 
-    def __init__(self, content_types=DEFAULT_CONTENTTYPES, 
-            output_file=DEFAULT_FILEPATH, dont_follow=False, 
-            follow_external=False, ignore_sitemap=False, **kwargs):
+    def __init__(self, content_types=DEFAULT_CONTENTTYPES, optimize=True,
+            output_file=DEFAULT_FILEPATH, follow=True, 
+            follow_external=False, include_sitemap=False, **kwargs):
         """Constructor.
 
         Arguments:
             start_urls -- list of URLs as strings
             content_types -- list of MIME types, groups, subtypes, or file
                 extensions
-            dont_follow -- boolean will allow/prevent spider from crawling links
+            follow -- boolean will allow/prevent spider from crawling links
             follow_external -- boolean will allow/prevent spider from crawling 
                 links external to start URL domains
-            ignore_sitemap -- boolean will allow/prevent using website sitemap to 
+            include_sitemap -- boolean will allow/prevent using website sitemap to 
                 help crawl entire site
 
         """
@@ -104,10 +104,11 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
         # values into string representation.
         kwargs.update(
                 content_types=content_types,
+                optimize=optimize,
                 output_file=output_file,
-                dont_follow=dont_follow, 
+                follow=follow, 
                 follow_external=follow_external, 
-                ignore_sitemap=ignore_sitemap)
+                include_sitemap=include_sitemap)
         for key, val in kwargs.iteritems():
             if isinstance(val, basestring):
                 try:
@@ -128,8 +129,8 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
         self.start_urls = set(url.geturl() for url in urls)
 
         # Crawling restrictions.
-        self.follow_external = not self.dont_follow and self.follow_external
-        self.ignore_sitemap = self.dont_follow or self.ignore_sitemap
+        self.follow_external = self.follow and self.follow_external
+        self.include_sitemap = self.follow and self.include_sitemap
         # Allowed domains.
         self.allowed_domains = None if self.follow_external else set(re.sub(r'^www\.', '', url.netloc) for url in urls)
 
@@ -165,7 +166,7 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
                     allow=(),
                     allow_domains=self.allowed_domains,
                     unique=True),
-                follow=not self.dont_follow,
+                follow=self.follow,
                 callback='parse_link'),
         )
         self._compile_rules()  # Required by CrawlSpider.__init__()
@@ -245,7 +246,7 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
         
         """
         return self._parse_response(response, self.parse_start_url, 
-                cb_kwargs={}, follow=not self.dont_follow)
+                cb_kwargs={}, follow=self.follow)
 
     def parse_start_url(self, response):
         """Include a start URL domain's sitemap in crawling if allowed."""
@@ -255,13 +256,13 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
                 urlp.netloc or urlp.hostname)
 
         # Include sitemap?
-        if self.ignore_sitemap or sitemap_url in self.seen:
-            return self.parse_link(response)
-        else:
+        if self.include_sitemap and sitemap_url not in self.seen:
             sitemap_requests = [Request(sitemap_url, callback=self._parse_sitemap)]
             self.seen.add(sitemap_url)
             response_requests = list(self.parse_link(response))
             return (item_or_request for item_or_request in sitemap_requests + response_requests)
+        else:
+            return self.parse_link(response)
 
     def parse_link(self, response):
         """Find all resources that coincide with what was specified and also 
@@ -296,7 +297,14 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
 
         requests = set()
         for link in resources:
-            link, mimetype, size = self.get_header_info(link, base_url, base_path)
+            mimetype = size = None
+            if self.optimize:
+                mimetype, encoding = mimetypes.guess_type(link)
+            if mimetype is None:
+                link, mimetype, size = self.get_header_info(link, base_url, base_path)
+            elif not urlparse(link).netloc:
+                # get_header_info() didn't get a chance to fix a relative URL.
+                link = base_url + os.path.join('/', base_path, link)
             if not mimetype:
                 self.seen.add(link)
                 continue
@@ -316,7 +324,7 @@ class ResourceSpider(CrawlSpider, SitemapSpider):
                     yield ResourceItem(url=link, mimetype=mimetype, size=size, referrer=url)
             
             # Build Requests.
-            if not self.dont_follow and any(href.strip() in link for href in hrefs):
+            if self.follow and any(href.strip() in link for href in hrefs):
                 requests.add(link)
 
         # Yield Requests after having yielded Items.

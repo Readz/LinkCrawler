@@ -8,54 +8,6 @@ DESCRIPTION
     amount of links of the given file type(s).  The URLs found will also be 
     provided.
 
-ARGUMENTS
-    Required
-
-        START_URL
-            One or more URL(s) from where the spider will start crawling.
-
-    Optional
-        
-        -h,--help 
-            Help.
-
-        -c CONTENT_TYPE, -m CONTENT_TYPE, -e CONTENT_TYPE, --content-type CONTENT_TYPE
-            MIME/content type(s) or file extensions to specify what resources 
-            are looked for when crawling.
-            Defaults to 'application/pdf'.
-    
-        --ignore-sitemap
-            Do not attempt to use a website's sitemap to aid in crawling all 
-            links.
-
-        --folllow-external
-            Allow spider to crawl links external to the given start URL 
-            domain(s).  This recursive operation may go too far.
-
-        --dont-follow
-            Disallow spider to crawl/follow any links found.
-            Overrides --follow-external.
-            Implicitly sets --ignore-sitemap.
-
-        --list-content-types
-            List available valid content types that encompass a group of MIME 
-            types.
-
-        --list-mime-types
-            List available valid MIME types with associated file extensions.
-
-        --list-extensions
-            List avalailable valid extensions with associated MIME type(s).
-            
-        -d, --debug
-            Debug printing will include Scrapy log output.
-
-USAGE
-    find_resources [-h] [-c CONTENT_TYPE] [--ignore_sitemap] 
-            [--follow-external] [--dont-follow] [--list-content-types]
-            [--list-mime-types] [--list-extensions] [-d] START_URL 
-            [START_URL ...]
-
 AUTHOR(S)
     Derek Frank <derek at readz dot com>
 
@@ -138,16 +90,21 @@ def get_opts(**defaults):
                     ' output.'
                     '\n[Default: "%(default)s"]'))
     # Crawling flags.
-    parser.add_argument('--ignore-sitemap', 
-            default=False, action='store_true',
+    parser.add_argument('--deoptimize', '--include-all-sizes', dest='optimize',
+            default=True, action='store_false',
+            help=('Prevent optimizations that sacrifice information for'
+                    ' performance.  For example, some resource size information'
+                    ' may be missing because a filetype is guessed.'))
+    parser.add_argument('--ignore-sitemap', dest='include_sitemap',
+            default=True, action='store_false',
             help=("Do not attempt to use a website's sitemap to aid in"
                     ' crawling all links.'))
     parser.add_argument('--follow-external',
             default=False, action='store_true',
             help=('Allow spider to crawl links external to the given start URL'
                     ' domain(s). This recursive operation may go too far.'))
-    parser.add_argument('--dont-follow', 
-            default=False, action='store_true',
+    parser.add_argument('--dont-follow', dest='follow',
+            default=True, action='store_false',
             help=('Disallow spider to crawl/follow any links found.'
                     '\nOverrides --follow-external.'
                     '\nImplicitly sets --ignore-sitemap.'))
