@@ -17,7 +17,7 @@ Be sure to navigate within the base directory of the package.
 
 Install Python packages.
 
-    % python -m ensurepip
+    % which pip || python -m ensurepip
     % sudo pip install setuptools
 
 Build and install.
