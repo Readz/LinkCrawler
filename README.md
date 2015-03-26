@@ -7,6 +7,16 @@ Derek Frank &lt;derek at readz dot com&gt;
 
 
 ### Install
+#### Mac OS X (Yosemite)
+Open Terminal `/Applications/Utilities/Terminal.app`
+
+    CMD-SPACE
+    terminal.app
+
+Command line tools.
+
+    % xcode-select --install
+    
 Git makes retrieving files simple.
 
     % git clone git@github.com:Readz/LinkCrawler.git || git clone https://github.com/Readz/LinkCrawler.git
