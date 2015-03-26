@@ -24,6 +24,9 @@ config = {
     'download_url': 'https://github.com/Readz/LinkCrawler.git',
     'install_requires': [
         'setuptools', 
+        'pyasn1',
+        'characteristic',
+        'httplib2',
         'nose', 
         'service-identity', 
         'pyOpenSSL', 

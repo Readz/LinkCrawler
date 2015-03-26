@@ -17,8 +17,8 @@ Be sure to navigate within the base directory of the package.
 
 Install Python packages.
 
-    % which pip || python -m ensurepip
-    % sudo pip install setuptools
+    % which pip || python -m ensurepip || sudo easy_install pip
+    % sudo pip install --upgrade setuptools pyasn1 characteristic httplib2
 
 Build and install.
 
