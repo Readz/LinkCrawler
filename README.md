@@ -9,7 +9,7 @@ Derek Frank &lt;derek at readz dot com&gt;
 ### Install
 Git makes retrieving files simple.
 
-    % git clone git@github.com:Readz/LinkCrawler.git
+    % git clone git@github.com:Readz/LinkCrawler.git || git clone https://github.com/Readz/LinkCrawler.git
 
 Be sure to navigate within the base directory of the package.
 
