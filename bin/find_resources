@@ -52,9 +52,11 @@ except ImportError:
 def get_opts(**defaults):
     from argparse import ArgumentParser, Action, ArgumentError
 
-    # Define argparse append action that will not include defaults when option 
-    # is specified.
     class DefaultListAction(Action):
+        """Define argparse append action that will not include defaults when 
+        option is specified.
+
+        """
         def __init__(self, *args, **kwargs):
             self.called = 0
             super(DefaultListAction, self).__init__(*args, **kwargs)
@@ -72,8 +74,39 @@ def get_opts(**defaults):
                 raise argparse.ArgumentError(self, 'expected one argument')
             self.called += 1
 
+    class InfoExitAction(Action):
+        """Define argparse action that will print information requested and 
+        exit program.
+        
+        """
+        def __call__(self, parser, namespace, values, option_string=None):
+            # Helpers
+            def colPrint(left, right, maxchars=20):
+                print ('%%%ds: %%s' % maxchars) % (left, right)
+            def lenCmp(s):
+                return len(s)
+            
+            if option_string == '--list-extensions':
+                k, v = 'EXTENSION', 'MIMETYPE'
+                maxchars = len(max(max(MIME_EXTENSIONS.iterkeys(), key=lenCmp), k, key=lenCmp))
+                colPrint(k, v, maxchars)
+                for ext, mime in MIME_EXTENSIONS.iteritems():
+                    colPrint(ext, mime, maxchars)
+            elif option_string == '--list-mime-types':
+                k, v = 'MIMETYPE', 'EXTENSIONS'
+                maxchars = len(max(max(MIME_TYPES, key=lenCmp), k, key=lenCmp))
+                colPrint('MIMETYPE', 'EXTENSIONS', maxchars)
+                for ct in sorted(MIME_TYPES):
+                    colPrint(ct, mimetypes.guess_all_extensions(ct), maxchars)
+            elif option_string == '--list-content-types':
+                k, v = 'CONTENT-TYPE', 'MIMETYPES'
+                maxchars = len(max(max(CONTENT_TYPES, key=lenCmp), k, key=lenCmp))
+                colPrint(k, v, maxchars)
+                for ct, mimes in sorted(CONTENT_TYPES.iteritems()):
+                    colPrint(ct, list(mimes), maxchars)
+            sys.exit()
+
     # Build option parser.
-    #usage = 'usage: python %prog [-h,--help] [options] URL ...'
     desc = ('Crawl the given website(s) and find all of the links of the given'
                 ' type(s).')
     parser = ArgumentParser(description=desc)
@@ -115,13 +148,13 @@ def get_opts(**defaults):
                     '\nImplicitly sets --ignore-sitemap.'))
     # List available options and exit.
     parser.add_argument('--list-content-types',
-            default=False, action='store_true',
+            nargs=0, action=InfoExitAction,
             help=('List available valid content types that encompass a group of MIME types.'))
     parser.add_argument('--list-mime-types',
-            default=False, action='store_true',
+            nargs=0, action=InfoExitAction,
             help=('List available valid MIME types with associated file extensions.'))
     parser.add_argument('--list-extensions',
-            default=False, action='store_true',
+            nargs=0, action=InfoExitAction,
             help=('List available valid extensions with associated MIME type(s).'))
     # Printing and debug output.
     parser.add_argument('-s', '--suppress',
@@ -136,12 +169,6 @@ def get_opts(**defaults):
     return parser.parse_args()
 
 def main():
-    # Helpers
-    def lenCmp(s):
-        return len(s)
-    def colPrint(left, right, maxchars=20):
-        print ('%%%ds: %%s' % maxchars) % (left, right)
-
     # Environment.
     os.environ['SCRAPY_SETTINGS_MODULE'] = 'resourcecrawler.settings'
 
@@ -156,27 +183,6 @@ def main():
             args.extend(['-s', 'LOG_LEVEL=DEBUG'])
         elif name == 'suppress':
             args.extend(['-s', 'LOG_ENABLED=%d' % (not val)])
-        elif val and name == 'list_extensions':
-            k, v = 'EXTENSION', 'MIMETYPE'
-            maxchars = len(max(max(MIME_EXTENSIONS.iterkeys(), key=lenCmp), k, key=lenCmp))
-            colPrint(k, v, maxchars)
-            for ext, mime in MIME_EXTENSIONS.iteritems():
-                colPrint(ext, mime, maxchars)
-            sys.exit()
-        elif val and name == 'list_mime_types':
-            k, v = 'MIMETYPE', 'EXTENSIONS'
-            maxchars = len(max(max(MIME_TYPES, key=lenCmp), k, key=lenCmp))
-            colPrint('MIMETYPE', 'EXTENSIONS', maxchars)
-            for ct in sorted(MIME_TYPES):
-                colPrint(ct, mimetypes.guess_all_extensions(ct), maxchars)
-            sys.exit()
-        elif val and name == 'list_content_types':
-            k, v = 'CONTENT-TYPE', 'MIMETYPES'
-            maxchars = len(max(max(CONTENT_TYPES, key=lenCmp), k, key=lenCmp))
-            colPrint(k, v, maxchars)
-            for ct, mimes in sorted(CONTENT_TYPES.iteritems()):
-                colPrint(ct, list(mimes), maxchars)
-            sys.exit()
         else:
             # Add as a string representation so that it may be evaluated to its 
             # proper value in another Python context.
