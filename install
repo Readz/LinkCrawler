@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+function install() {
+    local UNAME="$(uname -s)"
+    local CWD="$(dirname $0)"
+    local DIR="${PWD##*/}"
+
+    pushd "$CWD"
+
+    # Exit if not in the correct directory.
+    [[ "$DIR" =~ 'LinkGrawler' ]] && echo 'You are not in the LinkCrawler root directory' && exit 1
+
+    if [ "$UNAME" = 'Darwin' ]
+    then  # Mac OS X (Yosemite)
+        git pull
+        which pip >/dev/null || python -m ensurepip || sudo easy_install pip
+        sudo pip install --upgrade setuptools pyasn1 characterstic httplib2
+
+        python setup.py clean --all
+        python setup.py build
+        sudo python setup.py install --install-scripts=/usr/local/bin
+    else
+        echo 'Your system is not currently supported!'
+        exit 2
+    fi
+
+    # End.
+    popd
+}
+
+install

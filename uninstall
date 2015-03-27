@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+function uninstall() {
+    local UNAME="$(uname -s)"
+    local CWD="$(dirname $0)"
+    local DIR="${PWD##*/}"
+
+    pushd "$CWD"
+
+    # Exit if not in the correct directory.
+    [[ "$DIR" =~ 'LinkGrawler' ]] && echo 'You are not in the LinkCrawler root directory' && exit 1
+
+    if [ "$UNAME" = 'Darwin' ]
+    then  # Mac OS X (Yosemite)
+        sudo pip uninstall ResourceCrawler
+        sudo rm /usr/local/bin/find_resources
+        python setup.py clean --all
+    else
+        echo 'Your system is not currently supported!'
+        exit 2
+    fi
+
+    # End.
+    popd
+}
+
+uninstall
