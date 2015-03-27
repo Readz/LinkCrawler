@@ -25,21 +25,18 @@ Be sure to navigate within the base directory of the package.
 
     % cd LinkCrawler
 
-Install Python packages.
+Run install script.
 
-    % which pip || python -m ensurepip || sudo easy_install pip
-    % sudo pip install --upgrade setuptools pyasn1 characteristic httplib2
-
-Build and install.
-
-    % python setup.py build
-    % sudo python setup.py install --install-scripts=/usr/local/bin
+    % ./install
 
 
 ### Uninstall
+#### Mac OS X (Yosemite)
+Open Terminal and `cd` to your `LinkCrawler` directory.
 
-    % sudo pip uninstall ResourceCrawler
-    % sudo rm /usr/bin/local/find_resources
+Run uninstall script.
+
+    % ./uninstall
 
 
 ### Example Usage
